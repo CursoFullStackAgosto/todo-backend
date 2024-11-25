@@ -1,9 +1,11 @@
+require('dotenv').config()
+
 const express = require('express');
 const { connectDb } = require('./db');
 const app = express();
 app.use(express.json());
 
-const PORT = 3000;
+const PORT = process.env.API_PORT;
 
 // In-memory "database"
 let todos = [];
