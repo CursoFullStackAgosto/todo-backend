@@ -1,4 +1,6 @@
+const bcrypt = require('bcrypt')
 const { getUserByEmail, createUser } = require("../models/user.model");
+const { generateToken } = require('../config/jwt');
 
 const registerController = async (request, response) => {
     const {fullName, email, password} = request.body
@@ -12,7 +14,10 @@ const registerController = async (request, response) => {
                 message: 'El usuario ya esta registrado!'
             })
         }
-        const newUser = await createUser(fullName, email, password);
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const newUser = await createUser(fullName, email, hashedPassword);
 
         response.status(201).json({
             status: 'OK',
@@ -29,11 +34,43 @@ const registerController = async (request, response) => {
 }
 
 const loginController = async (request, response) => {
-    const {} = request.body
+    const { email, password } = request.body;
 
-    response.status(200).json({
-        message: 'Hola desde el endpoint de auth'
-    })
+    try {
+        const user = await getUserByEmail(email);
+
+        if (!user) {
+            return response.status(404).json({
+                status: 'not found',
+                message: 'No encontramos el usuario.'
+            })
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+
+        if (!isPasswordValid) {
+            return response.status(401).json({
+                status: 'unauthorized',
+                message: 'Credenciales invalidas'
+            })
+        }
+
+        const token = generateToken(user.id, user.email);
+
+        response.json({
+            user: {
+                userId: user.id,
+                email: user.email
+            },
+            token
+        })
+    } catch (error) {
+        console.error('Error al hacer login:', error)
+        response.status(500).json({
+            status: 'error',
+            message: 'Error al hacer login.'
+        })
+    }
 }
 
 
